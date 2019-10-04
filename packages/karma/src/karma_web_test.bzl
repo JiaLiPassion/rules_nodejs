@@ -129,14 +129,16 @@ def _write_karma_config(ctx, files, amd_names_shim):
     # Next we load the "runtime_deps" which we expect to contain named AMD modules
     # Thus they should come after the require.js script, but before any srcs or deps
     runtime_files = []
-    for d in ctx.attr.runtime_deps:
-        if not hasattr(d, "typescript"):
-            # Workaround https://github.com/bazelbuild/rules_nodejs/issues/57
-            # We should allow any JS source as long as it yields something that
-            # can be loaded by require.js
-            fail("labels in runtime_deps must be created by ts_library")
-        for src in d.typescript.es5_sources.to_list():
-            runtime_files.append(_to_manifest_path(ctx, src))
+    for dep in ctx.attr.runtime_deps:
+        if hasattr(dep, "typescript"):
+            for src in dep.typescript.es5_sources.to_list():
+                runtime_files.append(_to_manifest_path(ctx, src))
+        elif hasattr(dep, "files"):
+            # These are javascript files provided by DefaultInfo from a direct
+            # dep that has no "typescript" provider. These files must be in named
+            # AMD or named UMD format.
+            for src in dep.files.to_list():
+                runtime_files.append(_to_manifest_path(ctx, src))
 
     # Finally we load the user's srcs and deps
     user_entries = [
